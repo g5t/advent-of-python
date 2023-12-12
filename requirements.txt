@@ -1,0 +1,3 @@
+faoci @ git+https://github.com/g5t/faoci.git
+numpy
+scipy
