@@ -22,6 +22,7 @@ def part2(values):
 
 
 if __name__ == '__main__':
+    from faoci.interface import fetch_lines
     assert find_floor('(())') == 0
     assert find_floor('()()') == 0
     assert find_floor('(((') == 3
@@ -32,8 +33,5 @@ if __name__ == '__main__':
     assert enters_basement_at(')') == 1
     assert enters_basement_at('()())') == 5
 
-    with open('input.txt') as file:
-        data = file.readlines()[0]
-
-    part1(data)
-    part2(data)
+    part1(fetch_lines(year=2015, day=1)[0])
+    part2(fetch_lines(year=2015, day=1)[0])

@@ -20,7 +20,8 @@ def part(key: str, n: int = 5):
 
 
 if __name__ == '__main__':
+    from faoci.interface import fetch_lines
     assert find_first_hash_with_n_leading_zeros('abcdef', 5) == 609043
     assert find_first_hash_with_n_leading_zeros('pqrstuv', 5) == 1048970
-    part('bgvyzdsv')
-    part('bgvyzdsv', 6)
+    part(fetch_lines(year=2015, day=4)[0])
+    part(fetch_lines(year=2015, day=4)[0], 6)
