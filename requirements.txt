@@ -1,3 +1,4 @@
 faoci @ git+https://github.com/g5t/faoci.git
+loguru
 numpy
 scipy
