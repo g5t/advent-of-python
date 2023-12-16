@@ -87,12 +87,8 @@ class Ray:
     def __hash__(self):
         return hash(self.position + self.direction)
 
-    def copy(self):
-        return Ray(self.position, self.direction)
-
-    def move(self, pos: tuple[int, int], direction: tuple[int, int]):
-        self.position = pos
-        self.direction = direction
+    def step(self):
+        self.position = self.position[0] + self.direction[0], self.position[1] + self.direction[1]
 
 
 @dataclass
@@ -105,7 +101,7 @@ class Tracer:
         return Tracer(MirrorGrid.from_lines(grid_lines))
 
     def __post_init__(self):
-        self.reset()
+        self._energized = [[0 for c in range(self._grid.cols)] for r in range(self._grid.rows)]
 
     def __str__(self):
         from itertools import product
@@ -117,82 +113,44 @@ class Tracer:
                 lines[r][c] = f'\033[36m{lines[r][c]}\033[0;39m'
         return '\n'.join(''.join(line) for line in lines)
 
-    def energize(self, position: tuple[int, int]):
-        if 0 <= position[0] < self._grid.rows and 0 <= position[1] < self._grid.cols:
-            self._energized[position[0]][position[1]] = 1
-
     def reset(self):
-        self._energized = [[0 for c in range(self._grid.cols)] for r in range(self._grid.rows)]
+        from itertools import product
+        for (r, c) in product(range(self._grid.rows), range(self._grid.cols)):
+            self._energized[r][c] = 0
 
-    @property
-    def energized(self):
-        return sum(sum(r for r in row) for row in self._energized)
-
-    def trace(self, start: Ray | None = None):
-        self.reset()
+    def trace(self, start: Ray | None = None, update_plot: bool = False):
         rays = [Ray((0, 0), (0, 1))] if start is None else [start]
         memory = set()
+        visited = set()
         while len(rays):
-            p, d = rays[0].position, rays[0].direction
-            if (p, d) in memory:
+            while len(rays) and hash(rays[0]) in memory:
                 rays.pop(0)
-                continue
-            self.energize(p)
-            memory.add((p, d))
-            ds = self._grid.directions(p, d)
-            if len(ds) == 0:
-                rays.pop(0)
-                continue
-            elif len(ds) == 1:
-                rays[0].move(p, ds[0])
-            elif len(ds) == 2:
-                rays.append(rays[0].copy())  # copy before modifying
-                rays[-1].move(p, ds[1])
-                rays[0].move(p, ds[0])
-            d = rays[0].direction
-            p = p[0] + d[0], p[1] + d[1]  # ensure we take a step before checking if blank
-            self.energize(p)
-            while self._grid.is_blank(p):
-                p = p[0] + d[0], p[1] + d[1]
-                self.energize(p)
-            rays[0].move(p, d)
-        return self.energized
-
-    # def trace(self, start: Ray | None = None):
-    #     self.reset()
-    #     rays = [Ray((0, 0), (0, 1))] if start is None else [start]
-    #     memory = set()
-    #     while len(rays):
-    #         if (rays[0]) in memory:
-    #             rays.pop(0)
-    #             continue
-    #         self.energize(rays[0].position)
-    #         memory.add(rays[0])
-    #         ds = self._grid.directions(rays[0].position, rays[0].direction)
-    #         if len(ds) == 0:
-    #             rays.pop(0)
-    #             continue
-    #         elif len(ds) == 1:
-    #             rays[0].direction = ds[0]
-    #         elif len(ds) == 2:
-    #             rays[0].direction = ds[0]
-    #             rays.append(Ray(rays[0].position, ds[1]))
-    #         d = rays[0].direction
-    #         p = rays[0].position[0] + d[0], rays[0].position[1] + d[1]  # ensure we take a step before checking if blank
-    #         self.energize(p)
-    #         while self._grid.is_blank(p):
-    #             p = p[0] + d[0], p[1] + d[1]
-    #             self.energize(p)
-    #         rays[0].position = p
-    #     return self.energized
+            if len(rays):
+                visited.add(rays[0].position)
+                memory.add(hash(rays[0]))
+                ds = self._grid.directions(rays[0].position, rays[0].direction)
+                if len(ds):
+                    rays[0].direction = ds[0]
+                    if len(ds) == 2:
+                        rays.append(Ray(rays[0].position, ds[1]))
+                    rays[0].step()  # ensure we take a step before checking if blank
+                    visited.add(rays[0].position)
+                    while self._grid.is_blank(rays[0].position):
+                        rays[0].step()
+                        visited.add(rays[0].position)
+        energized = [v for v in visited if 0 <= v[0] < self._grid.rows and 0 <= v[1] < self._grid.cols]
+        if update_plot:
+            self.reset()
+            for (r, c) in energized:
+                self._energized[r][c] = 1
+        return len(energized)
 
     def trace_edges(self):
         top = [((0, i), (1, 0)) for i in range(self._grid.cols)]
         left = [((i, 0), (0, 1)) for i in range(self._grid.rows)]
         right = [((i, self._grid.cols-1), (0, -1)) for i in range(self._grid.rows)]
         bottom = [((self._grid.rows-1, i), (-1, 0)) for i in range(self._grid.cols)]
-        possible = [self.trace(start=Ray(*x)) for x in [*top, *left, *right, *bottom]]
-        return max(possible)
+        return max([self.trace(start=Ray(*x)) for x in [*top, *left, *right, *bottom]])
 
 
 def part1(lines: list[str]) -> int:
