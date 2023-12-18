@@ -26,7 +26,7 @@ def day_script_with_test(filename, year: int, day: int):
     if __name__ == '__main__':
         from faoci.interface import fetch_lines
         
-        assert part1(get_lines('y{year:02d}d{day:02d}.test')) == 1
+        assert part1(get_lines('y{year % 1000:02d}d{day:02d}.test')) == 1
         
         puzzle = fetch_lines(year={year}, day={day})
         print(f'Part 1: {{part1(puzzle)}}')
