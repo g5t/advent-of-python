@@ -18,15 +18,14 @@ class P:
         return D(self.x - other.x, self.y - other.y)
     def __str__(self):
         return f'P({self.x}, {self.y})'
+    def __hash__(self):
+        return hash((self.x, self.y))
 
 class D(P):
     def __str__(self):
         n, e, s, w = D(0, -1), D(1, 0), D(0, 1), D(-1, 0)
         chrs = {n: '^', e: '>', s: 'v', w: '<'}
         return chrs.get(self, '!')
-
-    def __hash__(self):
-        return hash((self.x, self.y))
 
     @classmethod
     def from_chr(cls, o: chr):
@@ -66,9 +65,6 @@ class B:
         if pos is None:
             raise RuntimeError("Starting point not found")
         return cls(board, pos, D.from_chr(lines[pos.y][pos.x]))
-
-    def empty_spots(self) -> list[P]:
-        return [P(x, y) for y, r in enumerate(self.board) for x, v in enumerate(r) if v == 0]
 
     def __str__(self):
         def c(x):
@@ -121,16 +117,28 @@ class B:
     def visit_count(self):
         return sum(sum(x > 0 for x in row) for row in self.board)
 
+    def empty_spots(self) -> set[P]:
+        return {P(x, y) for y, r in enumerate(self.board) for x, v in enumerate(r) if v == 0}
+
+    def visited(self) -> set[P]:
+        return {P(x, y) for y, r in enumerate(self.board) for x, v in enumerate(r) if v > 0}
+
+
 
 def part1(lines: list[str]) -> int:
     b = B.from_lines(lines)
+    b.walk()
     return b.visit_count()
 
 
 def part2(lines: list[str]) -> int:
     b0 = B.from_lines(lines)
     options = []
-    for opt in b0.empty_spots():
+    all_empty = b0.empty_spots()
+    b0.walk()
+    visited = b0.visited()
+    to_check = all_empty.intersection(visited)
+    for opt in to_check:
         bt = B.from_lines(lines)
         # insert an obstacle
         bt.board[opt.y][opt.x] = -1
@@ -141,9 +149,12 @@ def part2(lines: list[str]) -> int:
 
 if __name__ == '__main__':
     from faoci.interface import fetch_lines
+    from timer import Timer
 
     assert part1(example()) == 41
     assert part2(example()) == 6
 
-    print(f'Part 1: {part1(fetch_lines(year=2024, day=6))}')
-    print(f'Part 2: {part2(fetch_lines(year=2024, day=6))}')
+    with Timer(text="Part 1: elapsed time {:0.2f} s") as t:
+        print(f'Part 1: {part1(fetch_lines(year=2024, day=6))}')
+    with Timer(text="Part 2: elapsed time {:0.2f} s") as t:
+        print(f'Part 2: {part2(fetch_lines(year=2024, day=6))}')
