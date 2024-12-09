@@ -19,6 +19,10 @@ class File:
     def checksum(self):
         return sum((self.pos + i)*self.fid for i in range(self.num))
 
+    @property
+    def end(self):
+        return self.pos + self.num
+
 
 @dataclass
 class FileSystem:
@@ -43,25 +47,30 @@ class FileSystem:
                 break
         return File(p, 0, -1)
 
-    def move_last(self):
-        last = max(self.files)
-        free = self.fit(earliest=0, space=1)
-        if free.pos >= last.pos:
-            # no free space to move into
-            return False
-        
-        if free.num < last.num:
-            split = File(last.pos, last.num - free.num, last.fid)
-            self.files.append(split)
-            last.num = free.num
-        last.pos = free.pos
-        self.files = sorted(self.files)
-        return True
 
     def compact(self):
+        from collections import deque
         moves = 0
-        while self.move_last():
+        fs = deque(sorted(self.files))
+        back = fs[-1]
+        check_from = 0
+        while check_from + 1 < len(fs):
+            last_end = fs[check_from].end
+            back = fs.pop()
+            p = check_from + 1
+            while p < len(fs) and fs[p].pos == last_end:
+                last_end = fs[p].end
+                p += 1
+            if p < len(fs):
+                if (free := fs[p].pos - last_end) < back.num:
+                    fs.append(File(back.pos, back.num - free, back.fid))
+                    back.num = free
+            back.pos = last_end
+            fs.insert(p, back)
+            check_from = p
             moves += 1
+                
+        self.files = list(fs)
         return moves
 
     def defrag(self):
@@ -113,7 +122,7 @@ if __name__ == '__main__':
     assert part1(load_txt_lines('example')) == 1928
     assert part2(load_txt_lines('example')) == 2858
 
-    with Timer(text="Part 1: elapsed time {:0.2f} s") as t:
-        print(f'\tPart 1: {part1(fetch_lines(year=2024, day=9))}')
-    with Timer(text="Part 2: elapsed time {:0.2f} s") as t:
-        print(f'\tPart 2: {part2(fetch_lines(year=2024, day=9))}')
+    with Timer(text="\telapsed time {:0.2f} s") as t:
+        print(f'Part 1: {part1(fetch_lines(year=2024, day=9))}')
+    with Timer(text="\telapsed time {:0.2f} s") as t:
+        print(f'Part 2: {part2(fetch_lines(year=2024, day=9))}')
