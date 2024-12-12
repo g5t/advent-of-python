@@ -52,41 +52,35 @@ class Region:
 
     @property
     def sides(self):
-        print(self)
+        from itertools import product
+        inner, outer = 0, 0
 
-        
         n, e, s, w = Point(-1, 0), Point(0, 1), Point(1, 0), Point(0, -1)
-        ne, se, sw, nw = n+e, s+e, s+w, n+w
-        spots = (n, e, s, w, ne, se, sw, nw)
-        ul, ur, lr, ll = (s, e), (s, w), (n, w), (n, e)
-        on_edge = set()
+        # A point is a corner if none of its neighbors in one quadrant are present
+        check = (w, w+n, n), (n, n+e, e), (e, s+e, s), (s, s+w, w)
+        for p in self.points:
+            outer += sum(not any(p + x in self.points for x in z) for z in check)
 
-        neighbors = {p: sum(p+d in self.points for d in spots) for p in self.points}
-        on_edge = set(p for p, n in neighbors.items() if n < 8)
-        corners = set(p for p in on_edge if not any(all(x in on_edge for x in (p+d,p-d)) for d in (n,e)))
-        # also identify 'thin' corners ... somehow
-        count = {}
-        for p in corners:
-            my_neighbors = [x for x in (n, e, s, w) if p + x in on_edge]
-            no = len(my_neighbors)
-            if no == 0:
-                count[p] = 4
-            elif no == 1:
-                count[p] = 2
-            elif no == 2:
-                # distinguish between 'normal' and thin-(inner + outer) corners
-                a, b = my_neighbors
-                count[p] = 1 if p + a + b in self.points else 2
-            else:
-                print(f"What type of corner is {p} with {no} neighbors?")
-        print(count)
-        return sum(count.values())
+        # A point outside of the area is next to an inner corner the two orthogonal
+        # neighbors are present
+        check = (w, n), (n, e), (e, s), (s, w)
+        xmin, xmax, ymin, ymax = self.limits()
+        for x, y in product(range(xmin-1, xmax+2), range(ymin-1, ymax+2)):
+            p = Point(x, y)
+            if p not in self.points:
+                inner += sum(all(p + x in self.points for x in z) for z in check)
 
-    def board(self):
+        return inner + outer
+
+    def limits(self):
         xmin = min(p.x for p in self.points)
         xmax = max(p.x for p in self.points)
         ymin = min(p.y for p in self.points)
         ymax = max(p.y for p in self.points)
+        return xmin, xmax, ymin, ymax
+
+    def board(self):
+        xmin, xmax, ymin, ymax = self.limits()
         b = [[' ' for _ in range(xmin, xmax+1)] for _ in range(ymin, ymax+1)]
         for p in self.points:
             b[p.y - ymin][p.x - xmin] = self.name
@@ -182,6 +176,7 @@ if __name__ == '__main__':
     assert part2(load_txt_lines('example0')) == 80
     assert part2(load_txt_lines('example1')) == 436
     assert part2(load_txt_lines('exampleE')) == 236
+    assert part2(load_txt_lines('example8')) == 368
     assert part2(load_txt_lines('example2')) == 1206
 
     with Timer(text="\telapsed time {:0.2f} s") as t:
