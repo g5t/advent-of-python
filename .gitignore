@@ -1,4 +1,5 @@
 .idea/
 .venv/
 *.txt
+*.test
 __pycache__/
